@@ -1,11 +1,12 @@
 package com.ardi.mynoteapp;
 
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -13,12 +14,9 @@ import android.widget.ProgressBar;
 
 import com.ardi.mynoteapp.adapter.NoteAdapter;
 import com.ardi.mynoteapp.db.NoteHelper;
-import com.ardi.mynoteapp.entity.Note;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
 
 import static com.ardi.mynoteapp.FormAddUpdateActivity.REQUEST_UPDATE;
+import static com.ardi.mynoteapp.db.DatabaseContract.CONTENT_URI;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -26,7 +24,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     ProgressBar progressBar;
     FloatingActionButton fabAdd;
 
-    private ArrayList<Note> list;
+    private Cursor list;
     private NoteAdapter adapter;
     private NoteHelper noteHelper;
 
@@ -37,18 +35,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         getSupportActionBar().setTitle("Notes");
 
-        rvNotes = (RecyclerView)findViewById(R.id.rv_notes);
+        rvNotes = (RecyclerView) findViewById(R.id.rv_notes);
         rvNotes.setLayoutManager(new LinearLayoutManager(this));
         rvNotes.setHasFixedSize(true);
 
-        progressBar = (ProgressBar)findViewById(R.id.progressbar);
+        progressBar = (ProgressBar) findViewById(R.id.progressbar);
         fabAdd = findViewById(R.id.fab_add);
         fabAdd.setOnClickListener(this);
-
-        noteHelper = new NoteHelper(this);
-        noteHelper.open();
-
-        list = new ArrayList<>();
 
         adapter = new NoteAdapter(this);
         adapter.setListNotes(list);
@@ -58,73 +51,63 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    protected void onResume(){
+    protected void onResume() {
         super.onResume();
     }
 
     @Override
     public void onClick(View view) {
-        if (view.getId() == R.id.fab_add){
+        if (view.getId() == R.id.fab_add) {
             Intent intent = new Intent(MainActivity.this, FormAddUpdateActivity.class);
             startActivityForResult(intent, FormAddUpdateActivity.REQUEST_ADD);
         }
     }
 
-    private class LoadNoteAsync extends AsyncTask<Void, Void, ArrayList<Note>>{
+    private class LoadNoteAsync extends AsyncTask<Void, Void, Cursor> {
         @Override
-        protected void onPreExecute(){
+        protected void onPreExecute() {
             super.onPreExecute();
             progressBar.setVisibility(View.VISIBLE);
 
-            if (list.size() > 0){
-                list.clear();
-            }
         }
 
         @Override
-        protected ArrayList<Note> doInBackground(Void... voids) {
-            return noteHelper.query();
+        protected Cursor doInBackground(Void... voids) {
+            return getContentResolver().query(CONTENT_URI, null, null, null, null);
         }
 
         @Override
-        protected void onPostExecute(ArrayList<Note>notes){
+        protected void onPostExecute(Cursor notes) {
             super.onPostExecute(notes);
             progressBar.setVisibility(View.GONE);
 
-            list.addAll(notes);
+            list = notes;
             adapter.setListNotes(list);
             adapter.notifyDataSetChanged();
 
-            if (list.size() == 0){
+            if (list.getCount() == 0) {
                 showSnackBarMessage("Tidak ada data saat ini");
             }
         }
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == FormAddUpdateActivity.REQUEST_ADD){
-            if (resultCode == FormAddUpdateActivity.RESULT_ADD){
+        if (requestCode == FormAddUpdateActivity.REQUEST_ADD) {
+            if (resultCode == FormAddUpdateActivity.RESULT_ADD) {
                 new LoadNoteAsync().execute();
                 showSnackBarMessage("Satu item berhasil ditambahkan");
                 rvNotes.getLayoutManager().smoothScrollToPosition(rvNotes, new RecyclerView.State(), 0);
             }
-        }
-
-        else if (requestCode == REQUEST_UPDATE){
-            if (resultCode == FormAddUpdateActivity.RESULT_UPDATE){
+        } else if (requestCode == REQUEST_UPDATE) {
+            if (resultCode == FormAddUpdateActivity.RESULT_UPDATE) {
                 new LoadNoteAsync().execute();
                 showSnackBarMessage("Satu item berhasil diubah");
                 int position = data.getIntExtra(FormAddUpdateActivity.EXTRA_POSITION, 0);
                 rvNotes.getLayoutManager().smoothScrollToPosition(rvNotes, new RecyclerView.State(), position);
-            }
-
-            else if (resultCode == FormAddUpdateActivity.RESULT_DELETE) {
-                int position = data.getIntExtra(FormAddUpdateActivity.EXTRA_POSITION, 0);
-                list.remove(position);
-                adapter.setListNotes(list);
-                adapter.notifyDataSetChanged();
+            } else if (resultCode == FormAddUpdateActivity.RESULT_DELETE) {
+                new LoadNoteAsync().execute();
                 showSnackBarMessage("Satu item berhasil dihapus");
             }
         }
@@ -133,12 +116,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (noteHelper != null){
+        if (noteHelper != null) {
             noteHelper.close();
         }
     }
 
-    private void showSnackBarMessage(String message){
+    private void showSnackBarMessage(String message) {
         Snackbar.make(rvNotes, message, Snackbar.LENGTH_SHORT).show();
     }
 }

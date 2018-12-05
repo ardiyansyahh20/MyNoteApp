@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">DicodingNotesApp</string>
+    <string name="date">date</string>
+    <string name="title">title</string>
+    <string name="description">description</string>
+    <string name="buat_baru">buat baru</string>
+    <string name="hapus">hapus</string>
+    <string name="judul">judul</string>
+    <string name="deskripsi">deskripsi</string>
+    <string name="submit">submit</string>
+</resources>
